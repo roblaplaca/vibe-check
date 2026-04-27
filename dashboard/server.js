@@ -1,4 +1,5 @@
 const http = require('http');
+const VIBE_CONFIG = require('./config.json');
 
 const readings = [];
 const annotations = [];
@@ -6,12 +7,30 @@ const sessions = [];
 let activeSession = null;
 
 function gsrToColor(gsrValue) {
-  if (gsrValue > 1800)      return { hex: '#4a9eff', label: 'blue — very calm' };
-  else if (gsrValue > 1500) return { hex: '#00cfcf', label: 'teal — relaxed' };
-  else if (gsrValue > 1300) return { hex: '#4caf50', label: 'green — engaged' };
-  else if (gsrValue > 1100) return { hex: '#f0c040', label: 'yellow — active' };
-  else if (gsrValue > 800)  return { hex: '#f07820', label: 'orange — exerting' };
-  else                       return { hex: '#e03030', label: 'red — peak exertion' };
+  // 1. Check if the sensor is not being touched
+  if (gsrValue > VIBE_CONFIG.off) {
+    return { hex: '#000000', label: 'off — no contact' };
+  }
+
+  // 2. Map thresholds using the config object
+  if (gsrValue > VIBE_CONFIG.blue) {
+    return { hex: '#4a9eff', label: 'blue — very calm' };
+  } 
+  else if (gsrValue > VIBE_CONFIG.teal) {
+    return { hex: '#00cfcf', label: 'teal — relaxed' };
+  } 
+  else if (gsrValue > VIBE_CONFIG.green) {
+    return { hex: '#4caf50', label: 'green — engaged' };
+  } 
+  else if (gsrValue > VIBE_CONFIG.yellow) {
+    return { hex: '#f0c040', label: 'yellow — active' };
+  } 
+  else if (gsrValue > VIBE_CONFIG.orange) {
+    return { hex: '#f07820', label: 'orange — exerting' };
+  } 
+  else {
+    return { hex: '#e03030', label: 'red — peak exertion' };
+  }
 }
 
 const html = `<!DOCTYPE html>

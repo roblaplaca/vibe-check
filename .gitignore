@@ -9,3 +9,7 @@ node_modules/
 
 # Logs
 npm-debug.log*
+
+# Local Biometric Configs
+*vibe_config.h
+config.json

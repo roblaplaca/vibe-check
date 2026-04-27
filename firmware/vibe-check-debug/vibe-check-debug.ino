@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "arduino_secrets.h"
+#include "vibe_config.h"
 
 #define LED_PIN 5
 #define NUMPIXELS 7
@@ -21,16 +22,20 @@ long total = 0;
 unsigned long lastPost = 0;
 
 uint32_t gsrToColor(int gsrValue) {
-  // Keeping your original Off check, but moved higher to match new thresholds
-  if (gsrValue > 2450)      return ring.Color(0, 0, 0);     // Instant Off (No contact)
+  // 1. Initial "No Contact" check
+  if (gsrValue > vibeConfig.off) {
+    return ring.Color(0, 0, 0); 
+  }
   
-  // Adjusted thresholds to match the Node Dashboard logic
-  else if (gsrValue > 1800) return ring.Color(0, 0, 255);   // Blue - Very Calm
-  else if (gsrValue > 1500) return ring.Color(0, 255, 255); // Teal - Relaxed
-  else if (gsrValue > 1300) return ring.Color(0, 255, 0);   // Green - Engaged
-  else if (gsrValue > 1100) return ring.Color(255, 255, 0); // Yellow - Active
-  else if (gsrValue > 800)  return ring.Color(255, 45, 0);  // Orange - Exerting
-  else                      return ring.Color(255, 0, 0);   // Red - Peak
+  // 2. Cascade through the spectrum
+  if (gsrValue > vibeConfig.blue)   return ring.Color(0, 0, 255);    // Blue
+  if (gsrValue > vibeConfig.teal)   return ring.Color(0, 255, 255);  // Teal
+  if (gsrValue > vibeConfig.green)  return ring.Color(0, 255, 0);    // Green
+  if (gsrValue > vibeConfig.yellow) return ring.Color(255, 255, 0);  // Yellow
+  if (gsrValue > vibeConfig.orange) return ring.Color(255, 45, 0);   // Orange
+  
+  // 3. Fallback/Peak State
+  return ring.Color(255, 0, 0); // Red
 }
 
 void setup() {

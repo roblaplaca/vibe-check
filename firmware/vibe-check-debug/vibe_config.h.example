@@ -1,0 +1,16 @@
+#ifndef VIBE_CONFIG_H
+#define VIBE_CONFIG_H
+
+struct VibeThresholds {
+  int off     = 2450; 
+  int blue    = 1800; 
+  int teal    = 1500; 
+  int green   = 1300; 
+  int yellow  = 1100; 
+  int orange  = 800;
+  int red     = 0;
+};
+
+static VibeThresholds myVibe;
+
+#endif
