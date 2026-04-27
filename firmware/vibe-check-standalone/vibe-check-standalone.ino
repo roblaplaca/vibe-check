@@ -1,4 +1,5 @@
 #include <Adafruit_NeoPixel.h>
+#include "vibe_config.h"
 
 #define LED_PIN 5
 #define NUMPIXELS 7
@@ -51,12 +52,18 @@ bool tripQualifying = false;
 #define TRIP_QUALIFY_MS 400
 
 int gsrToHue(int gsrValue) {
-  if (gsrValue > 1420)      return 43690;
-  else if (gsrValue > 1300) return 32768;
-  else if (gsrValue > 1100) return 16384;
-  else if (gsrValue > 900)  return 10922;
-  else if (gsrValue > 800)  return 5461;
-  else                      return 0;
+  // 1. If we are above the 'off' threshold, we don't need a hue 
+  // (The calling function should handle turning the LEDs off)
+  if (gsrValue > vibeConfig.off) return 0; 
+
+  // 2. Map thresholds to the 16-bit Hue spectrum (0-65535)
+  if (gsrValue > vibeConfig.blue)   return 43690; // Blue
+  if (gsrValue > vibeConfig.teal)   return 32768; // Teal/Cyan
+  if (gsrValue > vibeConfig.green)  return 16384; // Green
+  if (gsrValue > vibeConfig.yellow) return 10922; // Yellow
+  if (gsrValue > vibeConfig.orange) return 5461;  // Orange
+  
+  return 0; // Red (Peak)
 }
 
 void shimmer(int baseHue, int brightness) {
