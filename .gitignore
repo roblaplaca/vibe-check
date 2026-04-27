@@ -1,0 +1,11 @@
+# Arduino Secrets
+*arduino_secrets.h
+!*arduino_secrets.h.example
+
+# Node/Javascript
+node_modules/
+.env
+.DS_Store
+
+# Logs
+npm-debug.log*
