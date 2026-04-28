@@ -1,0 +1,64 @@
+* { box-sizing: border-box; }
+body { background: #0f0f0f; color: #eee; font-family: monospace; margin: 0; padding: 20px; }
+h1 { color: #555; font-size: 12px; font-weight: normal; margin: 0 0 16px 0; letter-spacing: 0.08em; text-transform: uppercase; }
+
+#layout { display: grid; grid-template-columns: 1fr 280px; gap: 16px; }
+#left { display: flex; flex-direction: column; gap: 12px; }
+#right { display: flex; flex-direction: column; gap: 12px; }
+
+#chart { width: 100%; height: 300px; background: #1a1a1a; border-radius: 8px; display: block; }
+
+.panel { background: #1a1a1a; border-radius: 8px; padding: 14px; }
+.panel-title { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+
+#window-controls { display: flex; gap: 6px; }
+.wbtn { background: #111; border: 1px solid #2a2a2a; color: #555; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 11px; }
+.wbtn:hover { color: #aaa; }
+.wbtn.active { border-color: #4a9eff; color: #4a9eff; }
+
+#current-val { font-size: 28px; margin: 4px 0; transition: color 0.5s; }
+#current-label { font-size: 11px; color: #444; margin-bottom: 4px; min-height: 16px; transition: color 0.5s; }
+#current-time { font-size: 11px; color: #333; }
+
+#aura-legend { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+.legend-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #444; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-row.active-state { color: #aaa; }
+
+#session-name { width: 100%; background: #111; border: 1px solid #2a2a2a; color: #eee; padding: 8px 10px; border-radius: 6px; font-family: monospace; font-size: 12px; outline: none; margin-bottom: 8px; }
+#session-name:focus { border-color: #333; }
+#session-name:disabled { color: #555; }
+
+#start-stop { width: 100%; padding: 10px; border-radius: 6px; border: none; font-family: monospace; font-size: 13px; cursor: pointer; font-weight: bold; background: #1e3a1e; color: #4caf50; transition: all 0.2s; }
+#start-stop.recording { background: #3a1e1e; color: #f44336; }
+
+#timer { font-size: 11px; color: #444; margin-top: 8px; text-align: center; min-height: 16px; }
+
+#sessions-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+.session-card { background: #111; border-radius: 6px; padding: 10px 12px; border: 1px solid #222; cursor: pointer; transition: border-color 0.15s; }
+.session-card:hover { border-color: #333; }
+.session-card.highlighted { border-color: #4a9eff44; }
+.session-name-label { font-size: 12px; color: #ccc; margin-bottom: 4px; }
+.session-stats { font-size: 10px; color: #444; display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.session-stats span { color: #666; }
+.session-aura { font-size: 10px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.aura-dot { width: 8px; height: 8px; border-radius: 50%; }
+canvas.sparkline { width: 100%; height: 32px; display: block; }
+
+#export-btn { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #2a2a2a; background: #111; color: #555; font-family: monospace; font-size: 11px; cursor: pointer; }
+#export-btn:hover { color: #aaa; border-color: #444; }
+
+#annotation-row { display: flex; gap: 8px; }
+#annotation-input { flex: 1; background: #111; border: 1px solid #2a2a2a; color: #eee; padding: 7px 10px; border-radius: 6px; font-family: monospace; font-size: 12px; outline: none; }
+#annotation-input:focus { border-color: #333; }
+.abtn { background: #111; border: 1px solid #2a2a2a; color: #555; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-family: monospace; font-size: 12px; }
+.abtn:hover { color: #aaa; }
+
+#annotations-list { max-height: 120px; overflow-y: auto; margin-top: 8px; }
+#annotations-list div { font-size: 11px; color: #444; padding: 3px 0; border-bottom: 1px solid #1f1f1f; display: flex; gap: 10px; }
+#annotations-list .atime { color: #2a2a2a; min-width: 70px; }
+#annotations-list .alabel { color: #555; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }

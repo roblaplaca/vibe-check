@@ -1,0 +1,12 @@
+{
+    "name": "gsr-aura-monitor",
+    "version": "1.0.0",
+    "description": "Biometric GSR monitoring and session tracking",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2"
+    }
+}

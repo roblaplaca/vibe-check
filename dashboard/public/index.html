@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GSR Monitor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Biometric Aura Chronometer &mdash; GSR Monitor</h1>
+  <div id="layout">
+    <div id="left">
+      <canvas id="chart"></canvas>
+      <div class="panel">
+        <div class="panel-title">Time Window</div>
+        <div id="window-controls">
+          <button class="wbtn" onclick="setWindow(2,this)">2m</button>
+          <button class="wbtn" onclick="setWindow(5,this)">5m</button>
+          <button class="wbtn active" onclick="setWindow(15,this)">15m</button>
+          <button class="wbtn" onclick="setWindow(30,this)">30m</button>
+          <button class="wbtn" onclick="setWindow(0,this)">all</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Quick Annotation</div>
+        <div id="annotation-row">
+          <input id="annotation-input" type="text" placeholder="mark this moment..."/>
+          <button class="abtn" onclick="annotate()">Mark</button>
+        </div>
+        <div id="annotations-list"></div>
+      </div>
+    </div>
+
+    <div id="right">
+      <div class="panel">
+        <div class="panel-title">Live</div>
+        <div id="current-val">--</div>
+        <div id="current-label">&nbsp;</div>
+        <div id="current-time">waiting...</div>
+        <div id="aura-legend" style="margin-top:12px;">
+          <div class="legend-row" id="leg-blue"><span class="legend-dot" style="background:#4a9eff"></span>blue &mdash; very calm (&gt;1800)</div>
+          <div class="legend-row" id="leg-teal"><span class="legend-dot" style="background:#00cfcf"></span>teal &mdash; relaxed (1500&ndash;1800)</div>
+          <div class="legend-row" id="leg-green"><span class="legend-dot" style="background:#4caf50"></span>green &mdash; engaged (1300&ndash;1500)</div>
+          <div class="legend-row" id="leg-yellow"><span class="legend-dot" style="background:#f0c040"></span>yellow &mdash; active (1100&ndash;1300)</div>
+          <div class="legend-row" id="leg-orange"><span class="legend-dot" style="background:#f07820"></span>orange &mdash; exerting (800&ndash;1100)</div>
+          <div class="legend-row" id="leg-red"><span class="legend-dot" style="background:#e03030"></span>red &mdash; peak exertion (&lt;800)</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Record Session</div>
+        <input id="session-name" type="text" placeholder="name this session..."/>
+        <button id="start-stop" onclick="toggleSession()">&#9654; Start Recording</button>
+        <div id="timer"></div>
+      </div>
+
+      <div class="panel" style="flex:1">
+        <div class="panel-title">Sessions</div>
+        <div id="sessions-list"></div>
+      </div>
+
+      <button id="export-btn" onclick="exportData()">Export Sessions to Clipboard</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
