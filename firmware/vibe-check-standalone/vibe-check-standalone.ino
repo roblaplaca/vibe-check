@@ -177,6 +177,7 @@ void loop() {
   }
 
   else if (state == SCANNING) {
+    // 1. Rainbow Animation
     float rotations = (float)(now - scanStart) / 400.0;
     int baseHue = (int)(rotations * 65536) % 65536;
     for (int i = 0; i < NUMPIXELS; i++) {
@@ -185,41 +186,48 @@ void loop() {
     }
     ring.show();
 
-    if (now - lastSample > 60 && sampleIndex < SAMPLE_COUNT) {
-      samples[sampleIndex++] = smoothed;
-      lastSample = now;
+    // 2. Data Collection: Wait 3 seconds for the "Initial Dip" to pass
+    if (now - scanStart > 3000) {
+      if (now - lastSample > 60 && sampleIndex < SAMPLE_COUNT) {
+        samples[sampleIndex++] = smoothed;
+        lastSample = now;
+      }
     }
 
-    if (now - scanStart >= 3000) {
+    // 3. Handover to Transition after 6 seconds total
+    if (now - scanStart >= 6000) {
       long sum = 0;
-      for (int i = 0; i < SAMPLE_COUNT; i++) sum += samples[i];
-      baselineDuringResult = sum / SAMPLE_COUNT;
+      for (int i = 0; i < sampleIndex; i++) sum += samples[i];
+      
+      // Calculate baseline from the "recovery" portion of the touch
+      baselineDuringResult = (sampleIndex > 0) ? (sum / sampleIndex) : smoothed;
       lockedHue = gsrToHue(baselineDuringResult);
+      
       transitionStart = now;
       state = TRANSITION;
     }
   }
 
   else if (state == TRANSITION) {
-    float progress = (float)(now - transitionStart) / 800.0;
+    float progress = (float)(now - transitionStart) / 1500.0; 
+    
     if (progress >= 1.0) {
       state = RESULT;
-      tripQualifying = false;
     } else {
-      float eased = progress * progress * (3.0 - 2.0 * progress);
-      int rainbowBright = (int)(200 * (1.0 - eased));
-      int auraBright    = (int)(200 * eased);
-      float rotations   = (float)(now - scanStart) / 400.0;
-      int baseHue       = (int)(rotations * 65536) % 65536;
+      float rotations = (float)(now - scanStart) / 400.0;
+      int currentRainbowBase = (int)(rotations * 65536) % 65536;
 
       for (int i = 0; i < NUMPIXELS; i++) {
-        int hue = (baseHue + (i * (65536 / NUMPIXELS))) % 65536;
-        uint32_t c1 = ring.ColorHSV(hue, 255, rainbowBright);
+        int rHue = (currentRainbowBase + (i * (65536 / NUMPIXELS))) % 65536;
+        uint32_t c1 = ring.ColorHSV(rHue, 255, 200);
+
         float wave = sin((now / (400.0 + (i * 80.0))) + (i * 1.1));
-        uint32_t c2 = ring.ColorHSV(lockedHue + (int)(wave * 7000), 255, auraBright);
-        uint8_t r = min(255, (int)((c1 >> 16 & 0xFF) + (c2 >> 16 & 0xFF)));
-        uint8_t g = min(255, (int)((c1 >>  8 & 0xFF) + (c2 >>  8 & 0xFF)));
-        uint8_t b = min(255, (int)((c1       & 0xFF) + (c2       & 0xFF)));
+        uint32_t c2 = ring.ColorHSV(lockedHue + (int)(wave * 3000), 255, 200);
+
+        uint8_t r = (uint8_t)((1.0 - progress) * (c1 >> 16 & 0xFF) + progress * (c2 >> 16 & 0xFF));
+        uint8_t g = (uint8_t)((1.0 - progress) * (c1 >> 8 & 0xFF) + progress * (c2 >> 8 & 0xFF));
+        uint8_t b = (uint8_t)((1.0 - progress) * (c1 & 0xFF) + progress * (c2 & 0xFF));
+        
         ring.setPixelColor(i, ring.Color(r, g, b));
       }
       ring.show();
@@ -227,22 +235,63 @@ void loop() {
   }
 
   else if (state == RESULT) {
-    shimmer(lockedHue, 200);
-    int dropAmount = baselineDuringResult - smoothed;
-    bool dropping = dropAmount > 100 || dropAmount > (int)(baselineDuringResult * 0.10);
+    // 1. EXIT PROTECTION: Use config 'off' value to freeze pixels immediately
+    if (!fingersOn || smoothed >= (vibeConfig.off - 100)) {
+      shimmer(lockedHue, 200); // Last-look freeze
+      return; 
+    }
 
-    if (dropping) {
-      if (!tripQualifying) {
-        tripQualifying = true;
-        tripQualifyStart = now;
-      } else if (now - tripQualifyStart >= TRIP_QUALIFY_MS) {
-        tripQualifying = false;
-        tripStart = now;
-        state = TRIPPED;
+    // 2. MOTION SPARKLE (Subtle slope reaction)
+    int lastSampleVal = gsrReadings[(readIndex + SMOOTH_SAMPLES - 1) % SMOOTH_SAMPLES];
+    int slope = smoothed - lastSampleVal; 
+    
+    // Agitate (sparkle) only on sharp spikes > 25
+    int agitation = (slope > 25) ? (slope * 40) : 0;
+
+    // 3. SURGE CALCULATION (Drama logic)
+    int currentDrop = baselineDuringResult - smoothed;
+    
+    // We create a 'stressFactor' from 0.0 to 1.0. (200 point drop = full drama)
+    float stressFactor = constrain((float)currentDrop / 200.0, 0.0, 1.0);
+
+    // 4. RENDER HIGH-DRAMA DISTURBANCE
+    unsigned long t = millis();
+    
+    if (stressFactor < 0.2) {
+      // CALM AURA: Slow, polite shimmer (the existing look)
+      for (int i = 0; i < NUMPIXELS; i++) {
+        float speed = 400.0 + (i * 80.0);
+        float wave = sin((t / speed) + (i * 1.1));
+        int hueOffset = (int)(wave * (3000 + agitation));
+        ring.setPixelColor(i, ring.ColorHSV(lockedHue + hueOffset, 255, 200));
       }
     } else {
-      tripQualifying = false;
+      // SURGE: Electrical arcing (The "What was that!?" look)
+      
+      // We will define a very wide, intense hue (near-white but still locked-colorish)
+      uint32_t surgeColor = ring.ColorHSV(lockedHue, (255 - (int)(stressFactor * 200)), 255);
+      // We will define a base color (the locked hue, dim and saturated)
+      uint32_t baseColor = ring.ColorHSV(lockedHue, 255, (int)(150 - (stressFactor * 100)));
+
+      for (int i = 0; i < NUMPIXELS; i++) {
+        // Random chance of a "spark" firing, probability based on stress
+        // 0.2 stress = low chance, 1.0 stress = almost all pixels fire.
+        if (random(1000) < (stressFactor * 300)) {
+           ring.setPixelColor(i, surgeColor); // Electrical ARC
+        } else {
+           ring.setPixelColor(i, baseColor); // Dark Aura
+        }
+      }
     }
+    ring.show();
+
+    // 5. TRIPPED LOGIC (Keep this as the "System Overload" event)
+    if (currentDrop > 250) { 
+      if (!tripQualifying) { tripQualifyStart = now; tripQualifying = true; }
+      else if (now - tripQualifyStart >= TRIP_QUALIFY_MS) {
+        state = TRIPPED; tripStart = now; tripQualifying = false;
+      }
+    } else { tripQualifying = false; }
   }
 
   else if (state == TRIPPED) {
@@ -260,27 +309,23 @@ void loop() {
 
   else if (state == DRAIN) {
     unsigned long elapsed = now - drainStart;
+    const int idleHue = 46000; 
 
     if (elapsed < DRAIN_COLLAPSE) {
+      // 1. Smoothly dim the result color (No snap)
       float t = (float)elapsed / DRAIN_COLLAPSE;
-      float eased = t * t * t;
-      int brightness = (int)(200 * (1.0 - eased));
-      shimmer(lockedHue, brightness);
+      shimmer(lockedHue, (int)(200 * (1.0 - t)));
 
     } else if (elapsed < DRAIN_COLLAPSE + DRAIN_BLOOM) {
+      // 2. Fade in the idle blue base (No white flash)
       float t = (float)(elapsed - DRAIN_COLLAPSE) / DRAIN_BLOOM;
-      float eased = 1.0 - pow(1.0 - t, 3.0);
-      int brightness = (int)(55 * eased);
-      uint32_t color = ring.ColorHSV(46000, 120, brightness);
-      for (int i = 0; i < NUMPIXELS; i++) ring.setPixelColor(i, color);
-      ring.show();
-
-    } else if (elapsed < DRAIN_COLLAPSE + DRAIN_BLOOM + DRAIN_HOLD) {
-      uint32_t color = ring.ColorHSV(46000, 120, 55);
+      int brightness = (int)(20 * t); 
+      uint32_t color = ring.ColorHSV(idleHue, 120, brightness);
       for (int i = 0; i < NUMPIXELS; i++) ring.setPixelColor(i, color);
       ring.show();
 
     } else {
+      // 3. Immediately kick back to IDLE (Thunderstorm starts)
       idleReady = true;
       state = IDLE;
     }
