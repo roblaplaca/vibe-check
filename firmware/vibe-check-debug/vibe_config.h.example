@@ -11,6 +11,6 @@ struct VibeThresholds {
   int red     = 0;
 };
 
-static VibeThresholds myVibe;
+static VibeThresholds vibeConfig;
 
 #endif
