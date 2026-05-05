@@ -70,9 +70,9 @@ dashboard/config.json.example                         → config.json
 
 ---
 
-## Optional: Personal Calibration
+## Optional: Calibration
 
-The firmware detects arousal via relative signal changes, so it works out of the box without tuning. If you want to dial in your personal baseline — especially if your hardware build has different sensor placement or enclosure characteristics — see [CALIBRATION.MD](./CALIBRATION.MD) for the full profiling protocol.
+The firmware detects emotional state via relative signal changes, so it works out of the box without tuning. If you want to dial in your personal baseline — especially if your hardware build has different sensor placement or enclosure characteristics — see [CALIBRATION.MD](./CALIBRATION.MD) for the full profiling protocol.
 
 ---
 
