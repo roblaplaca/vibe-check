@@ -50,13 +50,20 @@ The standalone firmware removes network overhead for a low-latency, dedicated bi
 **Dashboard:**
 - [Node.js](https://nodejs.org/) v18+
 
-### 1. Firmware
-1. Navigate to `/firmware/vibe-check-debug`.
-2. Rename `arduino_secrets.h.example` to `arduino_secrets.h`.
-3. Input your WiFi credentials and the Local IP of the machine running the dashboard.
-4. Flash to your ESP32 via the Arduino IDE.
+### 1. Local Config Files
+Several config files are excluded from version control. Copy each `.example` file to create your local version:
+```
+firmware/vibe-check-debug/arduino_secrets.h.example   → arduino_secrets.h
+firmware/vibe-check-debug/vibe_config.h.example       → vibe_config.h
+firmware/vibe-check-standalone/vibe_config.h.example  → vibe_config.h
+dashboard/config.json.example                         → config.json
+```
 
-### 2. Dashboard
+### 2. Firmware
+1. Open `arduino_secrets.h` and enter your WiFi credentials and the local IP of the machine running the dashboard.
+2. Flash `/firmware/vibe-check-debug/vibe-check-debug.ino` to your ESP32 via the Arduino IDE.
+
+### 3. Dashboard
 1. Navigate to the `/dashboard` directory.
 2. Run `node server.js`.
 3. Open `http://localhost:3000` in your browser.
