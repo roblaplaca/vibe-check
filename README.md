@@ -29,19 +29,26 @@ To build a Vibe Check unit, you will need the following components:
 
 ## Project Architecture
 
-This project is organized into two phases to allow for precision calibration:
-
-### 1. Calibration Suite (`/dashboard` & `/firmware/vibe-check-debug`)
-GSR baselines vary significantly between builds. This suite streams real-time data to a Node.js dashboard to help you find your unique thresholds.
+### Dashboard & Debug Firmware (`/dashboard` & `/firmware/vibe-check-debug`)
+Streams real-time GSR data to a Node.js dashboard for monitoring and exploration.
 * **Live Graphing:** Monitor GSR peaks and valleys in real-time.
-* **Annotation:** Mark specific moments to identify your baseline "floor" and arousal "ceiling."
+* **Annotation:** Mark specific moments to observe your physiological range.
 
-### 2. Production Firmware (`/firmware/vibe-check-standalone`)
-Once thresholds are identified, flash the standalone firmware. It removes the network overhead for a low-latency, dedicated biometric experience—ideal for permanent physical installations.
+### Production Firmware (`/firmware/vibe-check-standalone`)
+The standalone firmware removes network overhead for a low-latency, dedicated biometric experience — ideal for permanent physical installations. Flash this once you're ready to deploy.
 
 ---
 
 ## Setup & Installation
+
+### Dependencies
+
+**Arduino (required for both firmware variants):**
+- [ESP32 board support](https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html) — install via Arduino IDE Board Manager
+- [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel) — install via Arduino IDE Library Manager
+
+**Dashboard:**
+- [Node.js](https://nodejs.org/) v18+
 
 ### 1. Firmware
 1. Navigate to `/firmware/vibe-check-debug`.
@@ -56,15 +63,9 @@ Once thresholds are identified, flash the standalone firmware. It removes the ne
 
 ---
 
-## Calibration Logic
-Default thresholds are configured for a cased hardware baseline (ESP32 12-bit ADC):
+## Optional: Personal Calibration
 
-| State | GSR Value | Color |
-| :--- | :--- | :--- |
-| **Deep Calm** | > 1800 | Blue |
-| **Engaged** | 1300 - 1500 | Green |
-| **Peak** | < 800 | Red |
-| **Sensor Off** | > 2450 | Off |
+The firmware detects arousal via relative signal changes, so it works out of the box without tuning. If you want to dial in your personal baseline — especially if your hardware build has different sensor placement or enclosure characteristics — see [CALIBRATION.MD](./CALIBRATION.MD) for the full profiling protocol.
 
 ---
 

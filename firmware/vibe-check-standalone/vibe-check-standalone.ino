@@ -4,6 +4,19 @@
 #define LED_PIN 5
 #define NUMPIXELS 7
 #define GSR_PIN 34
+#define INNER_LED_INDEX 0
+
+// ─────────────────────────────────────────────
+// BRIGHTNESS SCALE
+// 1.0 = full brightness (normal use)
+// 0.4 = dimmed for photography / video
+// ─────────────────────────────────────────────
+#define BRIGHTNESS_SCALE 1.0
+
+int scaleBr(int brightness) {
+  return (int)(brightness * BRIGHTNESS_SCALE);
+}
+// ─────────────────────────────────────────────
 
 Adafruit_NeoPixel ring(NUMPIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -52,17 +65,14 @@ bool tripQualifying = false;
 #define TRIP_QUALIFY_MS 400
 
 int gsrToHue(int gsrValue) {
-  // 1. If we are above the 'off' threshold, we don't need a hue 
-  // (The calling function should handle turning the LEDs off)
-  if (gsrValue > vibeConfig.off) return 0; 
+  if (gsrValue > vibeConfig.off) return 0;
 
-  // 2. Map thresholds to the 16-bit Hue spectrum (0-65535)
   if (gsrValue > vibeConfig.blue)   return 43690; // Blue
   if (gsrValue > vibeConfig.teal)   return 32768; // Teal/Cyan
   if (gsrValue > vibeConfig.green)  return 16384; // Green
   if (gsrValue > vibeConfig.yellow) return 10922; // Yellow
   if (gsrValue > vibeConfig.orange) return 5461;  // Orange
-  
+
   return 0; // Red (Peak)
 }
 
@@ -72,7 +82,7 @@ void shimmer(int baseHue, int brightness) {
     float speed = 400.0 + (i * 80.0);
     float wave = sin((t / speed) + (i * 1.1));
     int hueOffset = (int)(wave * 3500);
-    ring.setPixelColor(i, ring.ColorHSV(baseHue + hueOffset, 255, brightness));
+    ring.setPixelColor(i, ring.ColorHSV(baseHue + hueOffset, 255, scaleBr(brightness)));
   }
   ring.show();
 }
@@ -110,7 +120,7 @@ void thunderstorm() {
     brightness[i] += (target[i] - brightness[i]) * inertia * dt;
     brightness[i] = constrain(brightness[i], 4, 140);
 
-    ring.setPixelColor(i, ring.ColorHSV(46000, 130, (int)brightness[i]));
+    ring.setPixelColor(i, ring.ColorHSV(46000, 130, scaleBr((int)brightness[i])));
   }
 
   ring.show();
@@ -163,30 +173,40 @@ void loop() {
     }
   }
 
-  if (state == IDLE) {
-    if (idleReady) {
-      thunderstorm();
+  else if (state == IDLE) {
+    for (int i = 0; i < NUMPIXELS; i++) {
+      if (i != INNER_LED_INDEX) {
+        ring.setPixelColor(i, ring.ColorHSV(46000, 200, scaleBr(5)));
+      }
     }
+
+    float phase = millis() / 2000.0;
+    float rawSine = sin(phase * PI);
+    float breathCurve = (rawSine + 1.0) / 2.0;
+    breathCurve = pow(breathCurve, 3);
+
+    int brightness = map(breathCurve * 100, 0, 100, 10, 180);
+    uint32_t breathColor = ring.ColorHSV(46000, 180, scaleBr(brightness));
+
+    ring.setPixelColor(INNER_LED_INDEX, breathColor);
+    ring.show();
+
     if (fingersOn) {
-      state = SCANNING;
       scanStart = now;
       sampleIndex = 0;
-      lastSample = 0;
-      idleReady = true;
+      state = SCANNING;
     }
   }
 
   else if (state == SCANNING) {
-    // 1. Rainbow Animation
     float rotations = (float)(now - scanStart) / 400.0;
     int baseHue = (int)(rotations * 65536) % 65536;
     for (int i = 0; i < NUMPIXELS; i++) {
       int hue = (baseHue + (i * (65536 / NUMPIXELS))) % 65536;
-      ring.setPixelColor(i, ring.ColorHSV(hue, 255, 200));
+      ring.setPixelColor(i, ring.ColorHSV(hue, 255, scaleBr(200)));
     }
     ring.show();
 
-    // 2. Data Collection: Wait 3 seconds for the "Initial Dip" to pass
     if (now - scanStart > 3000) {
       if (now - lastSample > 60 && sampleIndex < SAMPLE_COUNT) {
         samples[sampleIndex++] = smoothed;
@@ -194,23 +214,21 @@ void loop() {
       }
     }
 
-    // 3. Handover to Transition after 6 seconds total
     if (now - scanStart >= 6000) {
       long sum = 0;
       for (int i = 0; i < sampleIndex; i++) sum += samples[i];
-      
-      // Calculate baseline from the "recovery" portion of the touch
+
       baselineDuringResult = (sampleIndex > 0) ? (sum / sampleIndex) : smoothed;
       lockedHue = gsrToHue(baselineDuringResult);
-      
+
       transitionStart = now;
       state = TRANSITION;
     }
   }
 
   else if (state == TRANSITION) {
-    float progress = (float)(now - transitionStart) / 1500.0; 
-    
+    float progress = (float)(now - transitionStart) / 1500.0;
+
     if (progress >= 1.0) {
       state = RESULT;
     } else {
@@ -219,15 +237,15 @@ void loop() {
 
       for (int i = 0; i < NUMPIXELS; i++) {
         int rHue = (currentRainbowBase + (i * (65536 / NUMPIXELS))) % 65536;
-        uint32_t c1 = ring.ColorHSV(rHue, 255, 200);
+        uint32_t c1 = ring.ColorHSV(rHue, 255, scaleBr(200));
 
         float wave = sin((now / (400.0 + (i * 80.0))) + (i * 1.1));
-        uint32_t c2 = ring.ColorHSV(lockedHue + (int)(wave * 3000), 255, 200);
+        uint32_t c2 = ring.ColorHSV(lockedHue + (int)(wave * 3000), 255, scaleBr(200));
 
         uint8_t r = (uint8_t)((1.0 - progress) * (c1 >> 16 & 0xFF) + progress * (c2 >> 16 & 0xFF));
         uint8_t g = (uint8_t)((1.0 - progress) * (c1 >> 8 & 0xFF) + progress * (c2 >> 8 & 0xFF));
         uint8_t b = (uint8_t)((1.0 - progress) * (c1 & 0xFF) + progress * (c2 & 0xFF));
-        
+
         ring.setPixelColor(i, ring.Color(r, g, b));
       }
       ring.show();
@@ -235,58 +253,43 @@ void loop() {
   }
 
   else if (state == RESULT) {
-    // 1. EXIT PROTECTION: Use config 'off' value to freeze pixels immediately
     if (!fingersOn || smoothed >= (vibeConfig.off - 100)) {
-      shimmer(lockedHue, 200); // Last-look freeze
-      return; 
+      shimmer(lockedHue, 200);
+      return;
     }
 
-    // 2. MOTION SPARKLE (Subtle slope reaction)
     int lastSampleVal = gsrReadings[(readIndex + SMOOTH_SAMPLES - 1) % SMOOTH_SAMPLES];
-    int slope = smoothed - lastSampleVal; 
-    
-    // Agitate (sparkle) only on sharp spikes > 25
+    int slope = smoothed - lastSampleVal;
+
     int agitation = (slope > 25) ? (slope * 40) : 0;
 
-    // 3. SURGE CALCULATION (Drama logic)
     int currentDrop = baselineDuringResult - smoothed;
-    
-    // We create a 'stressFactor' from 0.0 to 1.0. (200 point drop = full drama)
     float stressFactor = constrain((float)currentDrop / 200.0, 0.0, 1.0);
 
-    // 4. RENDER HIGH-DRAMA DISTURBANCE
     unsigned long t = millis();
-    
+
     if (stressFactor < 0.2) {
-      // CALM AURA: Slow, polite shimmer (the existing look)
       for (int i = 0; i < NUMPIXELS; i++) {
         float speed = 400.0 + (i * 80.0);
         float wave = sin((t / speed) + (i * 1.1));
         int hueOffset = (int)(wave * (3000 + agitation));
-        ring.setPixelColor(i, ring.ColorHSV(lockedHue + hueOffset, 255, 200));
+        ring.setPixelColor(i, ring.ColorHSV(lockedHue + hueOffset, 255, scaleBr(200)));
       }
     } else {
-      // SURGE: Electrical arcing (The "What was that!?" look)
-      
-      // We will define a very wide, intense hue (near-white but still locked-colorish)
-      uint32_t surgeColor = ring.ColorHSV(lockedHue, (255 - (int)(stressFactor * 200)), 255);
-      // We will define a base color (the locked hue, dim and saturated)
-      uint32_t baseColor = ring.ColorHSV(lockedHue, 255, (int)(150 - (stressFactor * 100)));
+      uint32_t surgeColor = ring.ColorHSV(lockedHue, (255 - (int)(stressFactor * 200)), scaleBr(255));
+      uint32_t baseColor  = ring.ColorHSV(lockedHue, 255, scaleBr((int)(150 - (stressFactor * 100))));
 
       for (int i = 0; i < NUMPIXELS; i++) {
-        // Random chance of a "spark" firing, probability based on stress
-        // 0.2 stress = low chance, 1.0 stress = almost all pixels fire.
         if (random(1000) < (stressFactor * 300)) {
-           ring.setPixelColor(i, surgeColor); // Electrical ARC
+          ring.setPixelColor(i, surgeColor);
         } else {
-           ring.setPixelColor(i, baseColor); // Dark Aura
+          ring.setPixelColor(i, baseColor);
         }
       }
     }
     ring.show();
 
-    // 5. TRIPPED LOGIC (Keep this as the "System Overload" event)
-    if (currentDrop > 250) { 
+    if (currentDrop > 250) {
       if (!tripQualifying) { tripQualifyStart = now; tripQualifying = true; }
       else if (now - tripQualifyStart >= TRIP_QUALIFY_MS) {
         state = TRIPPED; tripStart = now; tripQualifying = false;
@@ -297,7 +300,7 @@ void loop() {
   else if (state == TRIPPED) {
     float flicker = (sin(now * 0.05) * 0.5) + (random(0, 100) / 100.0 * 0.5);
     for (int i = 0; i < NUMPIXELS; i++) {
-      ring.setPixelColor(i, ring.ColorHSV(0, 255, (int)(200 + (flicker * 55))));
+      ring.setPixelColor(i, ring.ColorHSV(0, 255, scaleBr((int)(200 + (flicker * 55)))));
     }
     ring.show();
     if (now - tripStart > 2500) {
@@ -309,24 +312,36 @@ void loop() {
 
   else if (state == DRAIN) {
     unsigned long elapsed = now - drainStart;
-    const int idleHue = 46000; 
+    const int idleHue = 46000;
 
     if (elapsed < DRAIN_COLLAPSE) {
-      // 1. Smoothly dim the result color (No snap)
       float t = (float)elapsed / DRAIN_COLLAPSE;
-      shimmer(lockedHue, (int)(200 * (1.0 - t)));
+      int currentBr = (int)(200 * (1.0 - t));
+
+      for (int i = 0; i < NUMPIXELS; i++) {
+        ring.setPixelColor(i, ring.ColorHSV(lockedHue, 255, scaleBr(currentBr)));
+      }
+      ring.show();
 
     } else if (elapsed < DRAIN_COLLAPSE + DRAIN_BLOOM) {
-      // 2. Fade in the idle blue base (No white flash)
       float t = (float)(elapsed - DRAIN_COLLAPSE) / DRAIN_BLOOM;
-      int brightness = (int)(20 * t); 
-      uint32_t color = ring.ColorHSV(idleHue, 120, brightness);
-      for (int i = 0; i < NUMPIXELS; i++) ring.setPixelColor(i, color);
+
+      int ringBr = (int)(5 * t);
+      float phase = now / 2000.0;
+      float breathCurve = pow((sin(phase * PI) + 1.0) / 2.0, 3);
+      int targetCenterBr = map(breathCurve * 100, 0, 100, 10, 180);
+      int centerBr = (int)(targetCenterBr * t);
+
+      for (int i = 0; i < NUMPIXELS; i++) {
+        if (i == INNER_LED_INDEX) {
+          ring.setPixelColor(i, ring.ColorHSV(idleHue, 180, scaleBr(centerBr)));
+        } else {
+          ring.setPixelColor(i, ring.ColorHSV(idleHue, 200, scaleBr(ringBr)));
+        }
+      }
       ring.show();
 
     } else {
-      // 3. Immediately kick back to IDLE (Thunderstorm starts)
-      idleReady = true;
       state = IDLE;
     }
   }
